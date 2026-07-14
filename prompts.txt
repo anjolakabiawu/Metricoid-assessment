@@ -1,0 +1,78 @@
+================================================================================
+VOICE INSIGHTS SYSTEM — PROMPTS
+================================================================================
+
+These are the prompts used for the LLM extraction step (Task 2): producing the
+summary, key issues, sentiment, and risk flag from a cleaned conversation
+transcript.
+
+The same prompt is sent whether the pipeline runs the mock LLM or a real
+provider (Anthropic / OpenAI). The output is pinned to strict JSON so the
+response is machine-parseable and the mock and real API stay interchangeable.
+
+The canonical source of these prompts is src/prompts.py.
+
+
+--------------------------------------------------------------------------------
+1. SYSTEM PROMPT
+--------------------------------------------------------------------------------
+Sets the analyst role and forces a strict JSON schema for the output.
+
+You are a clinical/customer-interaction analyst.
+You are given a transcribed conversation between an agent and a user.
+Analyse it and respond with ONLY a valid JSON object - no prose, no markdown -
+using exactly this schema:
+
+{
+  "summary": "<2-3 sentence neutral summary of the conversation>",
+  "key_issues": ["<short phrase per concern>", "..."],
+  "sentiment": "positive" | "negative" | "neutral",
+  "risk_flag": {
+    "value": "Yes" | "No",
+    "reason": "<one sentence explaining the risk decision>"
+  }
+}
+
+Guidelines:
+- sentiment reflects the USER's emotional state, not the agent's.
+- risk_flag is "Yes" if there is any health, safety, emotional, or churn risk
+  that a human should review; otherwise "No".
+- Keep key_issues concise and grounded in what the user actually said.
+
+
+--------------------------------------------------------------------------------
+2. USER PROMPT (template)
+--------------------------------------------------------------------------------
+Wraps the cleaned transcript. {transcript} is filled in at runtime with the
+preprocessed conversation.
+
+Analyse the following conversation transcript and return the JSON described in
+the system instructions.
+
+TRANSCRIPT:
+{transcript}
+
+
+--------------------------------------------------------------------------------
+3. USER PROMPT (rendered example)
+--------------------------------------------------------------------------------
+Using the provided sample_input.json after preprocessing:
+
+Analyse the following conversation transcript and return the JSON described in
+the system instructions.
+
+TRANSCRIPT:
+agent: Hello, how can I help you today?
+user: Hi, I've been having trouble sleeping and feeling anxious.
+agent: Since when have you been experiencing this?
+user: For the last 2 weeks.
+
+
+--------------------------------------------------------------------------------
+NOTES
+--------------------------------------------------------------------------------
+- Urgency (Low/Medium/High) is NOT computed by the LLM. It is produced by a
+  separate, rule-based keyword-scoring system (src/urgency_scoring.py) so the
+  decision is fully transparent and auditable — no prompt is involved.
+- To run against a real LLM instead of the mock:  python main.py --real-llm
+  (requires the ANTHROPIC_API_KEY environment variable).
