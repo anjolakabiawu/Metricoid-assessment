@@ -1,0 +1,9 @@
+{
+  "conversation": [
+    {"speaker": "agent", "text": "Hello, how can I help you today?"},
+    {"speaker": "user", "text": "Hello, I need help urgently, there's a person by my side that is bleeding profusely, I don't know what to do"},
+    {"speaker": "agent", "text": "Since when has this person been like this?"},
+    {"speaker": "user", "text": "For the last 2-5 minutes."},
+    {"speaker": "agent", "text": "Alright, I am sending help right now"}
+  ]
+}

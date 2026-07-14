@@ -1,0 +1,54 @@
+{
+  "description": "Labelled evaluation set. Each case has a conversation plus the expected urgency level and risk flag. Used by test_pipeline.py (pass/fail) and monitor.py (accuracy tracking over time). Grow this set as new edge cases are found in production.",
+  "cases": [
+    {
+      "id": "sleep-anxiety",
+      "conversation": [
+        {"speaker": "agent", "text": "Hello, how can I help you today?"},
+        {"speaker": "user", "text": "Hi, I’ve been having trouble sleeping and feeling anxious."},
+        {"speaker": "agent", "text": "Since when have you been experiencing this?"},
+        {"speaker": "user", "text": "For the last 2 weeks."}
+      ],
+      "expected_urgency": "High",
+      "expected_risk": "Yes"
+    },
+    {
+      "id": "chest-pain-crisis",
+      "conversation": [
+        {"speaker": "agent", "text": "How can I help?"},
+        {"speaker": "user", "text": "I have SEVERE chest pain and feel hopeless."}
+      ],
+      "expected_urgency": "High",
+      "expected_risk": "Yes"
+    },
+    {
+      "id": "billing-neutral",
+      "conversation": [
+        {"speaker": "agent", "text": "Hi, what can I do for you?"},
+        {"speaker": "user", "text": "I just wanted to check my account balance."},
+        {"speaker": "agent", "text": "Your balance is 40 dollars."},
+        {"speaker": "user", "text": "Great, thank you."}
+      ],
+      "expected_urgency": "Low",
+      "expected_risk": "No"
+    },
+    {
+      "id": "mild-discomfort",
+      "conversation": [
+        {"speaker": "agent", "text": "How are you feeling?"},
+        {"speaker": "user", "text": "A bit tired and uncomfortable, but okay overall."}
+      ],
+      "expected_urgency": "Medium",
+      "expected_risk": "No"
+    },
+    {
+      "id": "panic-worried",
+      "conversation": [
+        {"speaker": "agent", "text": "Tell me what's going on."},
+        {"speaker": "user", "text": "I'm scared and worried, having panic attacks."}
+      ],
+      "expected_urgency": "High",
+      "expected_risk": "Yes"
+    }
+  ]
+}

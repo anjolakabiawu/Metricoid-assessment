@@ -1,0 +1,12 @@
+{
+  "summary": "The user contacted the agent and reported bleeding. The agent gathered further detail about duration and context.",
+  "key_issues": [
+    "bleeding"
+  ],
+  "sentiment": "negative",
+  "risk_flag": {
+    "value": "Yes",
+    "reason": "User expressed bleeding which may require clinical or human follow-up."
+  },
+  "urgency": "High"
+}

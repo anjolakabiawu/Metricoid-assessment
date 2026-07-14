@@ -1,0 +1,10 @@
+{
+  "summary": "...",
+  "key_issues": ["..."],
+  "sentiment": "...",
+  "risk_flag": {
+    "value": "Yes/No",
+    "reason": "..."
+  },
+  "urgency": "Low/Medium/High"
+}
