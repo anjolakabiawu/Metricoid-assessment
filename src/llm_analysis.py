@@ -38,10 +38,18 @@ class LLMResult(TypedDict):
 
 # Terms that suggest emotional/health/safety risk a human should review.
 _RISK_TERMS = [
+    # Mental-health / self-harm.
     "suicide", "self-harm", "hopeless", "can't go on", "harm myself",
-    "chest pain", "bleeding", "overdose", "severe", "emergency",
     "anxious", "anxiety", "depressed", "depression", "panic",
-    "trouble sleeping", "insomnia", "pain",
+    "trouble sleeping", "insomnia",
+    # Acute physical / medical emergencies. Several phrasings for breathing and
+    # loss of consciousness, because callers describe the same crisis many ways.
+    "chest pain", "bleeding", "overdose", "severe", "emergency", "pain",
+    "not breathing", "stopped breathing", "can't breathe", "cant breathe",
+    "trouble breathing", "difficulty breathing", "struggling to breathe",
+    "choking", "fainted", "passed out", "unconscious", "unresponsive",
+    "not responding", "collapsed", "seizure", "stroke", "heart attack",
+    "won't wake up", "not waking up",
 ]
 
 # Negative-sentiment cues from the user.

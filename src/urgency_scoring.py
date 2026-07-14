@@ -29,12 +29,36 @@ _HIGH_SEVERITY = {
     "self-harm": 5,
     "harm myself": 5,
     "chest pain": 5,
-    "can't breathe": 5,
-    "bleeding": 5,
     "overdose": 5,
     "hopeless": 4,
     "unbearable": 4,
     "profusely": 5,
+    # --- Breathing emergencies. We match several phrasings because callers
+    #     describe the same crisis many ways ("can't breathe", "not breathing",
+    #     "stopped breathing", "struggling to breathe").
+    "can't breathe": 5,
+    "cant breathe": 5,
+    "not breathing": 5,
+    "stopped breathing": 5,
+    "trouble breathing": 5,
+    "difficulty breathing": 5,
+    "struggling to breathe": 5,
+    "choking": 5,
+    # --- Loss of consciousness / unresponsiveness (life-threatening).
+    "fainted": 5,
+    "passed out": 5,
+    "unconscious": 5,
+    "unresponsive": 5,
+    "not responding": 5,
+    "not moving": 5,
+    "collapsed": 5,
+    # --- Other acute medical emergencies.
+    "bleeding": 5,
+    "seizure": 5,
+    "stroke": 5,
+    "heart attack": 5,
+    "not waking up": 5,
+    "won't wake up": 5,
 }
 
 _MEDIUM_SEVERITY = {

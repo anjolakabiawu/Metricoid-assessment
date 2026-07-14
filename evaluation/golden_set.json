@@ -49,6 +49,17 @@
       ],
       "expected_urgency": "High",
       "expected_risk": "Yes"
+    },
+    {
+      "id": "bystander-not-breathing",
+      "conversation": [
+        {"speaker": "agent", "text": "Hello, how can I help you today?"},
+        {"speaker": "user", "text": "I need help, my friend is not responding, he just fainted and he sounds like he is not breathing"},
+        {"speaker": "agent", "text": "Since when?"},
+        {"speaker": "user", "text": "for like 5 minutes"}
+      ],
+      "expected_urgency": "High",
+      "expected_risk": "Yes"
     }
   ]
 }

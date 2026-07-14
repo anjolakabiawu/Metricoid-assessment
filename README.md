@@ -24,6 +24,10 @@ voice-insights-system/
 │   ├── test_pipeline.py       # correctness gate (urgency & risk)
 │   └── monitor.py             # degradation / drift monitor
 │
+├── web/                       # browser demo interface (Flask)
+│   ├── app.py                 # server + /analyze endpoint
+│   └── templates/index.html   # single-page UI
+│
 └── data/                      # sample I/O
     ├── sample_input.json
     ├── sample_output.json
@@ -44,7 +48,23 @@ python main.py --real-llm                # use the real Anthropic API (needs ANT
 
 python evaluation/test_pipeline.py       # correctness: predicted urgency & risk vs labels
 python evaluation/monitor.py             # log metrics & alert on degradation
+
+python web/app.py                        # browser demo -> http://localhost:5000
 ```
+
+### Web demo
+
+`python web/app.py` starts a small Flask app at `http://localhost:5000`. It's a
+**chat interface**: you talk to the agent turn by turn (the agent asks scripted
+clinical-intake follow-ups), and when you're done you click **Analyze
+conversation**. The right panel then shows the summary, key issues, sentiment,
+risk flag, and urgency — including the urgency score and the exact keywords that
+matched, so the scoring is transparent. It reuses the same `src/` pipeline as the
+CLI.
+
+The agent's replies are scripted because the mock has no real LLM to reason about
+what the user said; making the agent context-aware (and adding voice) are listed
+under Improvements.
 
 ## Approach
 
@@ -147,10 +167,32 @@ This catches cases that are calm on paper but alarming in voice.
 
 ## Improvements (given more time)
 
-- **Replace mock with a real LLM** — the mock does keyword counting, so nuance
-  (sarcasm, mixed tone, implicit risk) is approximate. Sentiment is already made
-  risk-aware to avoid obvious errors, but a real model reads context natively; the
-  `--real-llm` path is already wired.
+- **Voice interface (speech-to-text + text-to-speech)** — since this is a *voice*
+  insights system, the natural next step is a spoken conversation: the user talks
+  to the agent and hears the agent's replies. I'd add speech-to-text (e.g.
+  faster-whisper, already familiar) to transcribe the user's speech into the same
+  `{speaker, text}` turns the pipeline already consumes, and text-to-speech to
+  voice the agent's replies. This also unlocks the audio-feature work in
+  `src/audio_features.py` end to end — the same captured audio feeds prosody-based
+  risk detection, not just the transcript.
+- **Context-aware agent (real LLM)** — the web chat's agent replies are currently
+  scripted. With a real LLM the agent would respond to what the user actually said
+  instead of following a fixed intake script. The mock keeps the demo API-key-free;
+  the `--real-llm` path is already wired for the analysis side.
+- **Move risk/urgency detection from keywords to an LLM** — keyword coverage is
+  inherently incomplete: a real conversation ("my friend fainted and isn't
+  breathing") only gets flagged if those exact phrases are in the list, so new
+  phrasings silently slip through as false negatives. Every gap found has to be
+  patched by hand. An LLM understands the *meaning* ("someone is unconscious and
+  not breathing" = emergency) without an exhaustive keyword list. The pragmatic
+  design is a hybrid: keep the fast, transparent, auditable keyword scorer as a
+  first pass and a safety net, and use the LLM as the primary judge — with the
+  keyword score available to explain and cross-check its decision.
+- **Replace mock analysis with a real LLM** — beyond risk/urgency, the mock does
+  keyword counting for summary/sentiment too, so nuance (sarcasm, mixed tone,
+  implicit distress) is approximate. Sentiment is already made risk-aware to avoid
+  obvious errors, but a real model reads context natively; the `--real-llm` path
+  is already wired.
 - **Per-speaker audio baselines** — pitch/energy are only meaningful relative to a
   speaker's own norm; calibrate against a neutral segment.
 - **Negation & intensity handling** in scoring ("no pain", "slightly anxious").

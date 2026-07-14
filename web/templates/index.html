@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voice Insights System</title>
+  <style>
+    /* --- Simple, self-contained styling (no external assets/CDNs). --- */
+    :root {
+      --bg: #0f172a; --panel: #1e293b; --panel2: #273449;
+      --text: #e2e8f0; --muted: #94a3b8; --border: #334155;
+      --accent: #38bdf8;
+      --agent: #334155; --user: #0ea5e9;
+      --neg: #f87171; --pos: #4ade80; --neutral: #94a3b8;
+      --high: #f87171; --medium: #fbbf24; --low: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.5;
+    }
+    header { padding: 20px 24px; border-bottom: 1px solid var(--border); }
+    header h1 { margin: 0; font-size: 20px; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px 24px; }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; }
+    .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+    /* Chat */
+    #chat { flex: 1; min-height: 340px; max-height: 460px; overflow-y: auto; padding: 6px;
+            display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 80%; padding: 9px 13px; border-radius: 14px; font-size: 14px; white-space: pre-wrap; }
+    .msg.agent { background: var(--agent); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .msg.user  { background: var(--user); color: #082f49; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .who { font-size: 11px; color: var(--muted); margin: 0 6px 2px; }
+    .who.user { text-align: right; }
+
+    .composer { display: flex; gap: 8px; margin-top: 12px; }
+    input[type=text] {
+      flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; font-size: 14px;
+    }
+    .row { display: flex; gap: 10px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+    button {
+      background: var(--accent); color: #082f49; border: none; border-radius: 8px;
+      padding: 10px 16px; font-weight: 600; cursor: pointer; font-size: 14px;
+    }
+    button:disabled { opacity: .5; cursor: default; }
+    .ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+
+    /* Results */
+    .card { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+    .card .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+    .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 13px; }
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .kw { display: inline-block; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+          padding: 3px 8px; font-size: 12px; margin: 3px 4px 0 0; }
+    .kw b { color: var(--accent); }
+    ul { margin: 0; padding-left: 18px; }
+    .error { color: var(--neg); font-size: 14px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .placeholder { color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Voice Insights System</h1>
+    <p>Have a conversation with the agent, then click <b>Analyze conversation</b> to extract insights.</p>
+  </header>
+
+  <div class="layout">
+    <!-- LEFT: chat -->
+    <div class="panel">
+      <h2>Conversation</h2>
+      <div id="chat"><!-- messages injected here --></div>
+
+      <div class="composer">
+        <input type="text" id="input" placeholder="Type your message…"
+               onkeydown="if(event.key==='Enter') sendMessage()" autocomplete="off" />
+        <button id="sendBtn" onclick="sendMessage()">Send</button>
+      </div>
+
+      <div class="row">
+        <button id="analyzeBtn" onclick="analyze()">Analyze conversation</button>
+        <button class="ghost" onclick="resetChat()">Restart</button>
+        <span id="status" class="muted"></span>
+      </div>
+    </div>
+
+    <!-- RIGHT: results -->
+    <div class="panel">
+      <h2>Insights</h2>
+      <div id="results">
+        <p class="placeholder">Chat with the agent, then click <b>Analyze conversation</b>.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const AGENT_OPENING = {{ opening | tojson }};
+
+    // The running conversation: a list of {speaker, text} turns. This is exactly
+    // the shape the /analyze endpoint (and the CLI) expects.
+    let conversation = [];
+    // How many USER messages have been sent - drives which scripted reply we get.
+    let userTurnCount = 0;
+
+    // --- Rendering helpers ---------------------------------------------------
+    function addBubble(speaker, text) {
+      const chat = document.getElementById("chat");
+      const who = document.createElement("div");
+      who.className = "who " + speaker;
+      who.textContent = speaker === "user" ? "You" : "Agent";
+      const bubble = document.createElement("div");
+      bubble.className = "msg " + speaker;
+      bubble.textContent = text;
+      chat.appendChild(who);
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function setStatus(msg) { document.getElementById("status").textContent = msg; }
+
+    // --- Conversation flow ---------------------------------------------------
+    function startChat() {
+      conversation = [{ speaker: "agent", text: AGENT_OPENING }];
+      userTurnCount = 0;
+      document.getElementById("chat").innerHTML = "";
+      addBubble("agent", AGENT_OPENING);
+    }
+
+    async function sendMessage() {
+      const inputEl = document.getElementById("input");
+      const text = inputEl.value.trim();
+      if (!text) return;                       // ignore empty sends
+
+      // 1. Record + show the user's message.
+      conversation.push({ speaker: "user", text });
+      addBubble("user", text);
+      inputEl.value = "";
+
+      // 2. Ask the server for the scripted agent reply.
+      try {
+        const resp = await fetch("/reply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_turn_index: userTurnCount, text: text }),
+        });
+        const data = await resp.json();
+        conversation.push({ speaker: "agent", text: data.reply });
+        addBubble("agent", data.reply);
+      } catch (e) {
+        addBubble("agent", "(agent unavailable: " + e.message + ")");
+      }
+      userTurnCount += 1;
+    }
+
+    function resetChat() {
+      startChat();
+      document.getElementById("results").innerHTML =
+        '<p class="placeholder">Chat with the agent, then click <b>Analyze conversation</b>.</p>';
+      setStatus("");
+    }
+
+    // --- Analysis ------------------------------------------------------------
+    async function analyze() {
+      // Need at least one user message to have something to analyse.
+      if (userTurnCount === 0) {
+        setStatus("Say something to the agent first.");
+        return;
+      }
+      const btn = document.getElementById("analyzeBtn");
+      btn.disabled = true; setStatus("Analyzing…");
+      try {
+        const resp = await fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ conversation }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          document.getElementById("results").innerHTML =
+            '<p class="error">' + (data.error || "Request failed") + '</p>';
+          return;
+        }
+        renderResults(data);
+        setStatus("Done.");
+      } catch (e) {
+        document.getElementById("results").innerHTML =
+          '<p class="error">Network error: ' + e.message + '</p>';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function sentimentColor(s) {
+      return s === "negative" ? "var(--neg)" : s === "positive" ? "var(--pos)" : "var(--neutral)";
+    }
+    function urgencyColor(u) {
+      return u === "High" ? "var(--high)" : u === "Medium" ? "var(--medium)" : "var(--low)";
+    }
+
+    function renderResults(d) {
+      const issues = (d.key_issues || []).map(i => "<li>" + escapeHtml(i) + "</li>").join("");
+      const matched = (d.urgency_detail?.matched || [])
+        .map(m => '<span class="kw">' + escapeHtml(m.keyword) + ' <b>+' + m.weight + '</b></span>')
+        .join("");
+      const matchedBlock = matched
+        ? '<div style="margin-top:8px">' + matched + '</div>'
+        : '<div class="muted" style="margin-top:6px">No urgency keywords matched.</div>';
+
+      document.getElementById("results").innerHTML = `
+        <div class="card">
+          <div class="label">Summary</div>
+          <div>${escapeHtml(d.summary)}</div>
+        </div>
+        <div class="card">
+          <div class="label">Key issues</div>
+          <ul>${issues}</ul>
+        </div>
+        <div class="card">
+          <div class="label">Sentiment &amp; Urgency</div>
+          <div class="badges">
+            <span class="pill" style="background:${sentimentColor(d.sentiment)};color:#082f49">
+              sentiment: ${escapeHtml(d.sentiment)}
+            </span>
+            <span class="pill" style="background:${urgencyColor(d.urgency)};color:#082f49">
+              urgency: ${escapeHtml(d.urgency)} (score ${d.urgency_detail?.score ?? "?"})
+            </span>
+          </div>
+          ${matchedBlock}
+        </div>
+        <div class="card">
+          <div class="label">Risk flag</div>
+          <span class="pill" style="background:${d.risk_flag.value === 'Yes' ? 'var(--neg)' : 'var(--pos)'};color:#082f49">
+            ${escapeHtml(d.risk_flag.value)}
+          </span>
+          <div style="margin-top:8px">${escapeHtml(d.risk_flag.reason)}</div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;").replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+
+    // Kick off the conversation on load.
+    startChat();
+  </script>
+</body>
+</html>
